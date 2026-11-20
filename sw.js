@@ -1,5 +1,5 @@
 /* Bump the cache name whenever the app shell changes. */
-const CACHE_NAME = 'tododay-v1';
+const CACHE_NAME = 'tododay-v3';
 
 const APP_SHELL = [
   './',
@@ -18,10 +18,8 @@ const APP_SHELL = [
   './assets/element-ui/index.js',
   './assets/element-ui/fonts/element-icons.woff',
   './assets/element-ui/fonts/element-icons.ttf',
-  './assets/fonts/geist-400.ttf',
-  './assets/fonts/geist-500.ttf',
-  './assets/fonts/geist-600.ttf',
-  './assets/fonts/geist-700.ttf',
+  './assets/fonts/JetBrainsMono.woff2',
+  './assets/fonts/lxgw-wkl.woff2',
   './assets/data.js',
   './assets/tododay.js'
 ];

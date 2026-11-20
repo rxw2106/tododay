@@ -1,29 +1,17 @@
 @font-face {
-  font-family: "Geist";
-  src: url("./fonts/geist-400.ttf") format("truetype");
+  font-family: "JetBrains Mono";
+  src: url("./fonts/JetBrainsMono.woff2") format("woff2");
   font-style: normal;
-  font-weight: 400;
+  font-weight: 100 900;
   font-display: swap;
+  unicode-range: U+0000-00FF;
 }
+
 @font-face {
-  font-family: "Geist";
-  src: url("./fonts/geist-500.ttf") format("truetype");
+  font-family: "LXGW WenKai Lite";
+  src: url("./fonts/lxgw-wkl.woff2") format("woff2");
   font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist";
-  src: url("./fonts/geist-600.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Geist";
-  src: url("./fonts/geist-700.ttf") format("truetype");
-  font-style: normal;
-  font-weight: 700;
+  font-weight: 100 900;
   font-display: swap;
 }
 
@@ -52,7 +40,7 @@
   --axis-ink: #68717b;
   --pill-neutral-bg: #eef1f4;
   --pill-neutral-ink: #343a40;
-  --font: "Geist", "Segoe UI", system-ui, sans-serif;
+  --font: "JetBrains Mono", "LXGW WenKai Lite", "Segoe UI", system-ui, sans-serif;
   --fs-title: 24px;
   --fs-section: 16px;
   --fs-kpi: 24px;
@@ -82,7 +70,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 body.is-locked { overflow: hidden; }
-button, input, select, textarea { font-family: inherit; }
+button, input, select, textarea, .el-button, .el-input__inner, .el-textarea__inner { font-family: var(--font); }
 button { -webkit-tap-highlight-color: transparent; }
 ::selection { background: #dbe8fb; color: var(--text); }
 a, button, input, select, textarea { outline-color: var(--accent); }
