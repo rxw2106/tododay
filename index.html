@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f4f7">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <title>今日页</title>
+
+  <!-- Element UI 样式 -->
+  <link rel="stylesheet" href="assets/element-ui/index.css">
+  <link rel="stylesheet" href="assets/app.css">
+  <link rel="stylesheet" href="assets/index.css">
+  <link rel="stylesheet" href="assets/tododay.css">
+</head>
+<body>
+  <!-- Vue 2 必须先于 Element UI 加载 -->
+  <script src="assets/vue.js"></script>
+  <!-- Element UI 组件库 -->
+  <script src="assets/element-ui/index.js"></script>
+  <script src="assets/data.js"></script>
+
+  <div id="app" v-cloak>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="#today" aria-label="今日页首页" @click.prevent="setView('today')">
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 3.75h8.25L19 7.5v12.75H7z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M15.25 3.75V7.5H19M10 11h5M14 14.5h5M10 18h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <path d="M4.5 6.25v14h9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="brand-copy">
+            <span class="brand-name">今日页</span>
+          </span>
+        </a>
+
+        <nav class="desktop-nav" aria-label="主导航">
+          <a v-for="item in views" :key="item.id" :href="'#' + item.id" :aria-current="view === item.id ? 'page' : null" @click.prevent="setView(item.id)">
+            {{ item.label }}<span v-if="item.id === 'today'" class="nav-count" :hidden="todayCount === 0">{{ todayCount }}</span>
+          </a>
+        </nav>
+
+        <div class="top-actions">
+          <span class="today-mark">{{ todayMark }}</span>
+          <button class="menu-toggle" type="button" aria-label="打开导航" :aria-expanded="menuOpen ? 'true' : 'false'" aria-controls="elementMobileNav" @click="menuOpen = true">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="canvas">
+      <section class="title-row" aria-labelledby="viewTitle">
+        <div class="title-copy">
+          <h1 id="viewTitle">{{ viewTitle }}</h1>
+          <p class="sub">{{ viewSub }}</p>
+        </div>
+        <div class="title-meta">记录保存在这台设备</div>
+      </section>
+
+      <section class="workbench" aria-label="待办工作区">
+        <div class="primary-column">
+          <section class="quick-add" aria-labelledby="quickAddTitle">
+            <div class="quick-head">
+              <h2 id="quickAddTitle">记下一件事</h2>
+              <p>按 Enter 添加，之后可补充备注与时间。</p>
+            </div>
+            <form class="quick-form" @submit.prevent="addTask">
+              <el-input ref="quickInput" v-model.trim="draft.title" class="quick-element-input" placeholder="例如：把周报发出去" maxlength="120" aria-label="待办内容"></el-input>
+              <div class="quick-controls">
+                <el-date-picker v-model="draft.date" class="quick-el-date" type="date" format="M月d日" value-format="yyyy-MM-dd" :clearable="false" prefix-icon="el-icon-date" aria-label="截止日期"></el-date-picker>
+                <el-select v-model="draft.category" class="quick-el-category" aria-label="分类">
+                  <el-option v-for="category in categories" :key="category" :label="category" :value="category"></el-option>
+                </el-select>
+                <el-button type="primary" native-type="submit" class="quick-el-add">添加</el-button>
+              </div>
+            </form>
+          </section>
+
+          <section class="ledger-panel" aria-labelledby="ledgerTitle">
+            <header class="ledger-head">
+              <div>
+                <h2 id="ledgerTitle">{{ ledgerTitle }}</h2>
+                <p>{{ ledgerMeta }}</p>
+              </div>
+              <div class="ledger-progress">
+                <span class="progress-number">{{ progressDone }} / {{ progressTotal }}</span>
+                <el-progress class="ledger-el-progress" :percentage="progressPercent" :show-text="false" :stroke-width="6" color="#1d5fbf" aria-label="当前清单完成进度"></el-progress>
+              </div>
+            </header>
+
+            <div class="ledger-toolbar">
+              <p class="result-count" aria-live="polite">{{ resultLabel }}</p>
+              <el-input v-model="search" class="element-search" clearable prefix-icon="el-icon-search" placeholder="搜索待办" aria-label="搜索待办"></el-input>
+            </div>
+
+            <div class="task-ledger" role="list">
+              <div v-for="task in visibleTasks" :key="task.id" class="task-row" :class="{ 'is-complete': task.completed, 'is-overdue': isOverdue(task) }" role="listitem">
+                <div class="task-time">
+                  <span class="time-main">{{ taskTimeParts(task).main }}</span>
+                  <span class="time-relative">{{ taskTimeParts(task).sub }}</span>
+                </div>
+                <el-checkbox v-model="task.completed" :aria-label="(task.completed ? '标记为未完成：' : '完成：') + task.title" @change="toggleTask(task)"></el-checkbox>
+                <div class="task-main">
+                  <div class="task-title-line"><span class="task-title" :title="task.title">{{ task.title }}</span></div>
+                  <div class="task-meta">
+                    <span>{{ task.category || '未分类' }}</span>
+                    <span v-if="view !== 'done'" class="mobile-due">{{ relativeDateLabel(dueKey(task)) }} {{ dueTime(task) }}</span>
+                    <template v-if="task.notes">
+                      <span class="meta-sep">·</span><span class="task-note">{{ task.notes }}</span>
+                    </template>
+                    <template v-if="task.priority === 'high' && !task.completed">
+                      <span class="meta-sep">·</span><span class="priority-high">重要</span>
+                    </template>
+                  </div>
+                </div>
+                <div class="task-tail">
+                  <span v-if="isOverdue(task)" class="overdue-label">已逾期</span>
+                  <span v-if="task.completed" class="time-relative">{{ completedLabel(task) }}</span>
+                  <el-button type="text" class="row-edit" @click="openEditor(task)">编辑</el-button>
+                </div>
+              </div>
+
+              <div v-if="!visibleTasks.length" class="task-empty">
+                <strong>{{ emptyTitle }}</strong>
+                <span>{{ emptyText }}</span>
+                <el-button size="mini" @click="emptyAction">{{ emptyActionText }}</el-button>
+              </div>
+            </div>
+
+            <footer class="ledger-foot">
+              <button v-if="hasCompleted" class="text-action danger" type="button" @click="clearCompleted">清除已完成</button>
+              <span>所有记录只保存在当前浏览器</span>
+            </footer>
+          </section>
+        </div>
+
+        <aside class="rail" aria-label="待办概览">
+          <section class="rail-panel week-panel" aria-labelledby="weekTitle">
+            <header class="rail-head">
+              <div>
+                <h2 id="weekTitle">这一周</h2>
+                <p>每天完成的任务数</p>
+              </div>
+              <span class="rail-summary">{{ weekSummary }}</span>
+            </header>
+            <div class="week-chart">
+              <svg viewBox="0 0 280 142" role="img" :aria-label="'本周每天完成的任务数，今天完成 ' + todayCompleted + ' 件'">
+                <line v-for="line in weekGrid" :key="line.y" x1="8" :y1="line.y" x2="272" :y2="line.y" stroke="var(--grid)" stroke-width="1"/>
+                <line x1="8" y1="112" x2="272" y2="112" stroke="var(--border)" stroke-width="1"/>
+                <g v-for="(day, index) in weekDays" :key="day.key">
+                  <rect v-if="day.count" :x="day.x - 8.5" :y="112 - day.height" width="17" :height="day.height" rx="2" :fill="day.today ? '#1d5fbf' : '#15181b'">
+                    <title>{{ formatMonthDay(day.date) }}，完成 {{ day.count }} 件</title>
+                  </rect>
+                  <text :x="day.x" :y="106 - day.height" text-anchor="middle" :fill="day.today ? 'var(--text)' : 'var(--muted)'" font-size="11" :font-weight="day.today ? '500' : '400'">{{ day.count }}</text>
+                  <text :x="day.x" y="132" text-anchor="middle" :fill="day.today ? 'var(--text)' : 'var(--muted)'" font-size="11" :font-weight="day.today ? '600' : '400'">{{ dayLabels[index] }}</text>
+                </g>
+              </svg>
+            </div>
+            <p class="week-note">{{ weekNote }}</p>
+          </section>
+
+          <section class="rail-panel upcoming-panel" aria-labelledby="upcomingTitle">
+            <header class="rail-head">
+              <div>
+                <h2 id="upcomingTitle">接下来</h2>
+                <p>今天之后</p>
+              </div>
+              <a class="card-link" href="#week" @click.prevent="setView('week')">看本周 ›</a>
+            </header>
+            <div class="upcoming-list">
+              <div v-for="task in upcoming" :key="task.id" class="upcoming-item">
+                <div class="upcoming-date"><strong>{{ relativeDateLabel(dueKey(task)) }}</strong><span>{{ dueTime(task) || '随时' }}</span></div>
+                <div class="upcoming-main"><span class="upcoming-title" :title="task.title">{{ task.title }}</span><span class="upcoming-meta">{{ task.category }}</span></div>
+              </div>
+              <div v-if="!upcoming.length" class="upcoming-empty">接下来还没有排定的事项。</div>
+            </div>
+          </section>
+        </aside>
+      </section>
+
+      <footer class="page-footer">
+        <span>今日页</span>
+        <span>把今天过成一张能收尾的清单。</span>
+      </footer>
+    </main>
+
+    <el-drawer id="elementMobileNav" :visible.sync="menuOpen" direction="rtl" size="100%" :with-header="false" custom-class="element-mobile-drawer">
+      <div class="element-mobile-panel">
+        <div class="element-mobile-head">
+          <span class="brand-name">今日页</span>
+          <button class="icon-button" type="button" aria-label="关闭导航" @click="menuOpen = false">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 5 10 10M15 5 5 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+        <nav class="mobile-nav" aria-label="手机主导航">
+          <a v-for="item in views" :key="item.id" :href="'#' + item.id" :aria-current="view === item.id ? 'page' : null" @click.prevent="setView(item.id)">
+            {{ item.label }}<span v-if="item.id === 'today'" class="nav-count" :hidden="todayCount === 0">{{ todayCount }}</span>
+          </a>
+        </nav>
+        <p class="mobile-note">记录只保存在这台设备的浏览器中。</p>
+      </div>
+    </el-drawer>
+
+    <el-dialog title="编辑待办" :visible.sync="dialogVisible" width="440px" custom-class="task-el-dialog" :close-on-click-modal="false" @closed="resetEditor">
+      <el-form label-position="top" @submit.native.prevent>
+        <el-form-item label="待办内容">
+          <el-input ref="editorTitle" v-model.trim="editor.title" maxlength="120" @keyup.enter.native="saveEditor"></el-input>
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model.trim="editor.notes" type="textarea" :rows="3" maxlength="500" placeholder="补充上下文、链接或交付标准"></el-input>
+        </el-form-item>
+        <div class="editor-grid">
+          <el-form-item label="日期">
+            <el-date-picker v-model="editor.date" class="editor-date" type="date" format="yyyy-MM-dd" value-format="yyyy-MM-dd" prefix-icon="el-icon-date"></el-date-picker>
+          </el-form-item>
+          <el-form-item label="时间">
+            <el-select v-model="editor.time" class="editor-time" filterable allow-create default-first-option :popper-append-to-body="false" placeholder="选择时间" aria-label="时间">
+              <el-option v-for="time in timeOptions" :key="time" :label="time" :value="time"></el-option>
+            </el-select>
+          </el-form-item>
+        </div>
+        <div class="editor-grid">
+          <el-form-item label="分类">
+            <el-select v-model="editor.category" class="editor-select">
+              <el-option v-for="category in categories" :key="category" :label="category" :value="category"></el-option>
+            </el-select>
+          </el-form-item>
+          <el-form-item label="优先级">
+            <el-select v-model="editor.priority" class="editor-select">
+              <el-option label="高" value="high"></el-option>
+              <el-option label="中" value="medium"></el-option>
+              <el-option label="低" value="low"></el-option>
+            </el-select>
+          </el-form-item>
+        </div>
+      </el-form>
+      <span slot="footer" class="dialog-actions">
+        <el-button class="dialog-delete" @click="deleteTask">删除待办</el-button>
+        <span class="dialog-actions-right">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveEditor">保存</el-button>
+        </span>
+      </span>
+    </el-dialog>
+  </div>
+
+  <div class="boot-error" id="bootError" hidden>
+    <strong>Vue 或 Element UI 没有加载成功。</strong>
+    <p>本地依赖加载失败，请确认 assets 目录完整后刷新页面。</p>
+  </div>
+  <noscript><div class="boot-error"><strong>需要启用 JavaScript。</strong><p>Vue 和 Element UI 才能挂载这个示例。</p></div></noscript>
+
+  <script src="assets/tododay.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
