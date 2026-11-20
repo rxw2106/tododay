@@ -4,7 +4,7 @@
 
 ## 打开方式
 
-直接双击 `index.html` 即可使用；也可以在当前目录启动静态服务：
+直接双击 `index.html` 可以浏览页面；PWA 安装和离线缓存需要通过 HTTP/HTTPS 访问。请在当前目录启动静态服务：
 
 ```powershell
 python -m http.server 4173
@@ -42,3 +42,19 @@ python -m http.server 4173
 
 
 
+
+
+## 安装为 PWA
+
+- Chrome / Edge：访问页面后，点击地址栏右侧的“安装”按钮
+- Android Chrome：通过浏览器菜单选择“添加到主屏幕”或“安装应用”
+- iOS Safari：通过分享菜单选择“添加到主屏幕”
+- 首次在线打开后，应用外壳会被 Service Worker 缓存，之后可离线启动
+
+PWA 文件：
+
+- `manifest.webmanifest`：应用名称、启动模式、主题色和图标
+- `sw.js`：离线缓存与更新策略
+- `assets/icons/`：安装图标与 Apple Touch Icon
+
+部署新版本并修改前端资源后，需要同步修改 `sw.js` 中的 `CACHE_NAME`，以清理旧缓存。
